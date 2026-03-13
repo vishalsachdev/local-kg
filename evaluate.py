@@ -26,10 +26,10 @@ from pathlib import Path
 import networkx as nx
 
 
-ENTITY_TYPES = {"person", "concept", "tool", "technique", "organization"}
+ENTITY_TYPES = {"person", "course", "tool", "concept", "organization"}
 RELATION_TYPES = {
-    "uses", "enables", "part_of", "created_by",
-    "related_to", "implements", "alternative_to", "depends_on",
+    "prerequisite_of", "taught_by", "uses", "part_of",
+    "covers", "decided_by", "depends_on", "related_to",
 }
 
 
