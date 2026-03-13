@@ -3,7 +3,8 @@
 Build a knowledge graph from unstructured text in hours, not weeks — entirely
 on your own hardware. No cloud APIs, no data leaves your machine.
 
-Inspired by [Vin Vashishta's Local AI series](https://vinvashishta.substack.com/p/local-ai-the-5-hour-knowledge-graph).
+Inspired by [Vin Vashishta's Local AI series](https://vinvashishta.substack.com/p/local-ai-the-5-hour-knowledge-graph)
+and [Karpathy's autoresearch](https://github.com/karpathy/autoresearch).
 
 ## The Approach
 
@@ -84,6 +85,44 @@ python explore.py knowledge_graph.json --show "Claude Code"
 - Python 3.11+
 - [Ollama](https://ollama.com) running locally
 - Any model that fits your hardware (llama3.2 recommended for Apple Silicon)
+
+## Autoresearch Mode (Karpathy's Loop)
+
+The autoresearch integration applies Karpathy's autonomous experiment loop
+to knowledge graph quality optimization. An AI agent iterates on `experiment.py`
+— the only file it can modify — while `evaluate.py` provides fixed scoring.
+
+**The mapping:**
+
+| Karpathy's autoresearch | local-kg autoresearch |
+|------------------------|----------------------|
+| `train.py` (agent edits) | `experiment.py` (agent edits) |
+| `prepare.py` (read-only) | `evaluate.py` (read-only) |
+| `program.md` (human writes) | `program.md` (human writes) |
+| val_bpb (lower = better) | composite_score (lower = better) |
+| 5-min training runs | extraction runs on sample data |
+| `results.tsv` | `results.tsv` |
+
+**Usage:**
+
+```bash
+# Run a single experiment (agent calls this in each iteration)
+python run_autoresearch.py ./articles --experiment --desc "tighter prompt"
+
+# Evaluate an existing graph
+python run_autoresearch.py --evaluate knowledge_graph.json
+
+# View experiment history
+python run_autoresearch.py --history
+```
+
+**The agent loop** (from `program.md`):
+1. Read `experiment.py` and recent results
+2. Hypothesize a change (prompt wording, chunk size, thresholds, etc.)
+3. Modify `experiment.py` and commit
+4. Run `python run_autoresearch.py <dir> --experiment`
+5. If score improved → keep. If worse → revert.
+6. NEVER STOP.
 
 ## Why Local?
 
