@@ -15,7 +15,7 @@ from rich.panel import Panel
 from rich.tree import Tree
 
 from graph import load_graph, graph_stats
-from query import find_entity, get_neighbors, find_path, get_cluster
+from query import find_entity, get_neighbors, find_path
 
 console = Console()
 

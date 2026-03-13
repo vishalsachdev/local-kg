@@ -9,7 +9,6 @@ Metrics:
   - entity_count: Total unique entities extracted
   - relationship_count: Total unique relationships
   - density: relationships / entities (higher = more connected graph)
-  - dedup_ratio: unique entities / raw entities (lower = better dedup)
   - avg_confidence: Mean confidence across entities
   - component_ratio: 1 - (components / entities) (higher = more connected)
   - type_coverage: How many entity types are represented (out of 5)

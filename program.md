@@ -42,7 +42,7 @@ Run this loop indefinitely. NEVER STOP.
 ## Rules
 
 - ONLY modify `experiment.py` — never touch `evaluate.py`, `ingest.py`,
-  `graph.py`, `query.py`, or `prepare.py`
+  `extract.py`, `graph.py`, `query.py`, `build_kg.py`, or `run_autoresearch.py`
 - Do NOT install new packages
 - Do NOT modify the evaluation function
 - Each experiment runs for a fixed time budget (set by the runner)

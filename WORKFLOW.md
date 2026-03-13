@@ -12,7 +12,6 @@ knowledge graph builder must do — before writing a line of code.
 - Markdown files (.md)
 - HTML articles (.html)
 - Plain text files (.txt)
-- PDF documents (.pdf)
 
 ### What Is the Output?
 A structured knowledge graph stored as JSON with:

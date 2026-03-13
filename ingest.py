@@ -104,11 +104,22 @@ def chunk_text(text: str, max_chars: int = 2000, overlap: int = 200) -> list[str
     return chunks
 
 
-def ingest_directory(directory: str) -> list[Chunk]:
+def ingest_directory(
+    directory: str,
+    max_chars: int | None = None,
+    overlap: int | None = None,
+) -> list[Chunk]:
     """
     Ingest all supported files from a directory into chunks.
     This is the sensory → working memory transition.
+
+    Chunk params default to experiment.py config if not specified.
     """
+    # Import here to avoid circular imports at module level
+    import experiment as exp
+    max_chars = max_chars if max_chars is not None else exp.CHUNK_MAX_CHARS
+    overlap = overlap if overlap is not None else exp.CHUNK_OVERLAP
+
     chunks = []
     dir_path = Path(directory)
 
@@ -140,7 +151,7 @@ def ingest_directory(directory: str) -> list[Chunk]:
             if len(section_body) < 30:
                 continue
 
-            text_chunks = chunk_text(section_body)
+            text_chunks = chunk_text(section_body, max_chars=max_chars, overlap=overlap)
             for i, chunk_text_content in enumerate(text_chunks):
                 chunks.append(Chunk(
                     text=chunk_text_content.strip(),

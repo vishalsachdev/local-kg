@@ -4,8 +4,9 @@ Entity and relationship extraction using a local LLM via Ollama.
 This is the working memory → semantic memory transition.
 The LLM processes each chunk and extracts structured entities and relationships.
 
-Following Vashishta's principle: the LLM is called with precise instructions
-about what to extract, what quality looks like, and how to handle ambiguity.
+All configuration (prompt, model, thresholds, stop entities) lives in
+experiment.py — the single file the autoresearch agent iterates on.
+Both build_kg.py and run_autoresearch.py share this config.
 """
 
 import json
@@ -18,6 +19,7 @@ except ImportError:
     ollama = None
 
 from ingest import Chunk
+import experiment as exp
 
 
 @dataclass
@@ -41,111 +43,87 @@ class Relationship:
     source_file: str = ""
 
 
-# This prompt follows Vashishta's "intern test": specific enough that
-# a junior analyst could produce the expected output.
-EXTRACTION_PROMPT = """You are an entity and relationship extractor. Given the text below,
-extract ALL meaningful entities and their relationships.
-
-ENTITY TYPES (pick one per entity):
-- person: Named individuals
-- concept: Ideas, methodologies, patterns, principles
-- tool: Software, libraries, frameworks, hardware
-- technique: Specific methods, algorithms, approaches
-- organization: Companies, teams, communities
-
-RELATIONSHIP TYPES (pick one per relationship):
-- uses: X uses Y
-- enables: X enables/supports Y
-- part_of: X is part of Y
-- created_by: X was created by Y
-- related_to: X is related to Y (use when relationship is unclear)
-- implements: X implements Y
-- alternative_to: X is an alternative to Y
-- depends_on: X depends on Y
-
-RULES:
-1. Extract SPECIFIC named entities, not generic terms like "the system" or "users"
-2. Each entity needs a short description (1 sentence)
-3. Each relationship needs source, target, and type
-4. If entity type is unclear, use "concept" with confidence 0.5
-5. If relationship is implied but not stated, use "related_to" with confidence 0.5
-6. Merge obvious duplicates (e.g., "JS" and "JavaScript")
-
-Return ONLY valid JSON in this exact format:
-{
-  "entities": [
-    {"name": "Entity Name", "type": "concept", "description": "What it is", "confidence": 0.9}
-  ],
-  "relationships": [
-    {"source": "Entity A", "target": "Entity B", "relation": "uses", "description": "How they relate", "confidence": 0.8}
-  ]
-}
-
-TEXT TO ANALYZE:
----
-{text}
----
-
-Return ONLY the JSON. No markdown fences, no explanation."""
-
-
-def extract_from_chunk(
-    chunk: Chunk,
-    model: str = "llama3.2",
-) -> tuple[list[Entity], list[Relationship]]:
-    """Extract entities and relationships from a single chunk using local LLM."""
-    if ollama is None:
-        raise RuntimeError("ollama package not installed. Run: pip install ollama")
-
-    prompt = EXTRACTION_PROMPT.format(text=chunk.text)
-
-    response = ollama.chat(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        options={"temperature": 0.1, "num_ctx": 4096},
-    )
-
-    raw = response["message"]["content"]
-
-    # Parse JSON from response, handling common LLM quirks
+def _parse_llm_json(raw: str) -> dict:
+    """Parse JSON from LLM response, handling common quirks."""
     raw = raw.strip()
-    # Strip markdown code fences if present
     if raw.startswith("```"):
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
 
     try:
-        data = json.loads(raw)
+        return json.loads(raw)
     except json.JSONDecodeError:
-        # Try to find JSON object in the response
         match = re.search(r"\{.*\}", raw, re.DOTALL)
         if match:
             try:
-                data = json.loads(match.group())
+                return json.loads(match.group())
             except json.JSONDecodeError:
-                return [], []
-        else:
-            return [], []
+                return {}
+        return {}
+
+
+def _filter_entity(name: str, confidence: float) -> bool:
+    """Return True if the entity should be kept."""
+    if len(name) < exp.MIN_ENTITY_NAME_LENGTH:
+        return False
+    if confidence < exp.MIN_ENTITY_CONFIDENCE:
+        return False
+    if name.lower() in exp.STOP_ENTITIES:
+        return False
+    return True
+
+
+def extract_from_chunk(
+    chunk: Chunk,
+    model: str | None = None,
+) -> tuple[list[Entity], list[Relationship]]:
+    """Extract entities and relationships from a single chunk using local LLM."""
+    if ollama is None:
+        raise RuntimeError("ollama package not installed. Run: pip install ollama")
+
+    model = model or exp.MODEL
+    prompt = exp.EXTRACTION_PROMPT.format(text=chunk.text)
+
+    try:
+        response = ollama.chat(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": exp.TEMPERATURE, "num_ctx": exp.NUM_CTX},
+        )
+        raw = response["message"]["content"]
+    except Exception as e:
+        # Connection refused, model not found, etc.
+        print(f"  [warning] LLM error: {e}")
+        return [], []
+
+    data = _parse_llm_json(raw)
 
     entities = []
     for e in data.get("entities", []):
+        name = e.get("name", "").strip()
+        confidence = float(e.get("confidence", 0.8))
+        if not _filter_entity(name, confidence):
+            continue
         entities.append(Entity(
-            name=e.get("name", "").strip(),
+            name=name,
             entity_type=e.get("type", "concept"),
             description=e.get("description", ""),
-            confidence=float(e.get("confidence", 0.8)),
+            confidence=confidence,
             source_file=chunk.source_file,
             source_section=chunk.section,
         ))
 
     relationships = []
     for r in data.get("relationships", []):
+        confidence = float(r.get("confidence", 0.8))
+        if confidence < exp.MIN_RELATIONSHIP_CONFIDENCE:
+            continue
         relationships.append(Relationship(
             source=r.get("source", "").strip(),
             target=r.get("target", "").strip(),
             relation=r.get("relation", "related_to"),
             description=r.get("description", ""),
-            confidence=float(r.get("confidence", 0.8)),
+            confidence=confidence,
             source_file=chunk.source_file,
         ))
 
@@ -154,7 +132,7 @@ def extract_from_chunk(
 
 def extract_batch(
     chunks: list[Chunk],
-    model: str = "llama3.2",
+    model: str | None = None,
     on_progress=None,
 ) -> tuple[list[Entity], list[Relationship]]:
     """Extract from all chunks with progress tracking."""

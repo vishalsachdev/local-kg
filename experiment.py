@@ -94,10 +94,3 @@ STOP_ENTITIES = {
     "the system", "the user", "it", "they", "this", "that",
     "the author", "the article", "the document", "the text",
 }
-
-# ── Deduplication ────────────────────────────────────────────────────
-# Characters to normalize when comparing entity names
-NORMALIZE_CHARS = {"-": " ", "_": " ", ".": " "}
-
-# Whether to merge entities that are substrings of each other
-MERGE_SUBSTRINGS = False
