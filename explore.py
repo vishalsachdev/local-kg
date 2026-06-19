@@ -138,12 +138,23 @@ def main():
     parser.add_argument("--stats", action="store_true", help="Show stats and exit")
     parser.add_argument("--search", help="Search for an entity")
     parser.add_argument("--show", help="Show entity details")
+    parser.add_argument(
+        "--export-okf", metavar="DIR",
+        help="Export the graph to an Open Knowledge Format bundle and exit",
+    )
     args = parser.parse_args()
 
     G = load_graph(args.graph_file)
     console.print(f"Loaded graph: {G.number_of_nodes()} entities, {G.number_of_edges()} relationships")
 
-    if args.stats:
+    if args.export_okf:
+        from okf_export import export_okf
+        summary = export_okf(G, args.export_okf)
+        console.print(
+            f"Exported OKF bundle to [cyan]{summary['out_dir']}/[/cyan] "
+            f"({summary['files_written']} markdown files)"
+        )
+    elif args.stats:
         show_stats(G)
     elif args.search:
         show_search(G, args.search)

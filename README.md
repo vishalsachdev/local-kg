@@ -80,6 +80,52 @@ python explore.py knowledge_graph.json --show "Claude Code"
 - `path <A> -> <B>` — Find shortest path between two entities
 - `stats` — Graph overview and most connected entities
 
+### Share (Open Knowledge Format)
+
+The internal `knowledge_graph.json` is NetworkX-specific. To share the graph —
+with a teammate, with another AI agent, or with your future self — export it to
+an [**Open Knowledge Format (OKF)**](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing)
+bundle: a directory of plain markdown files with YAML frontmatter, one file per
+entity, with relationships expressed as ordinary markdown links.
+
+```bash
+# Export while building
+python build_kg.py ./my-content --okf okf_bundle
+
+# Or export an existing graph
+python explore.py knowledge_graph.json --export-okf okf_bundle
+python okf_export.py knowledge_graph.json -o okf_bundle
+```
+
+OKF is a *format, not a platform* — vendor-neutral, readable on GitHub, and
+re-ingestable by any consumer (`okf_export.load_okf_bundle()` round-trips a
+bundle back into a graph). It keeps the "no data leaves your machine" principle
+while making the graph portable. Bundle layout:
+
+```
+okf_bundle/
+├── index.md                     # stats + links to each entity type
+└── entities/
+    ├── course/
+    │   ├── index.md             # progressive disclosure
+    │   └── badm-557.md          # type, title, description + relationship links
+    └── person/
+        └── xing.md
+```
+
+## Development
+
+```bash
+# Install dev dependencies (runtime deps + pytest)
+pip install -r requirements-dev.txt
+
+# Run the test suite (no Ollama required — the LLM is mocked)
+pytest
+```
+
+Tests cover ingestion, graph construction/dedup, querying, the fixed evaluation
+harness, and OKF export/round-trip. CI runs them on every push and PR.
+
 ## Requirements
 
 - Python 3.11+
