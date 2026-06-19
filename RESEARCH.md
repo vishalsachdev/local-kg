@@ -222,3 +222,9 @@ triples, a human accepts/rejects in a CSV; the accepted set is your reference
 declares *fixed* (the autoresearch agent optimizes against it). Improving it is
 the point — the current score is gameable — but it changes the experiment
 contract, so it's a deliberate decision rather than a silent edit.
+
+> **Decision (deferred implementation):** when P3 is built, the preferred
+> approach is to keep `evaluate.py` as the single fixed harness and add the new
+> content-level metrics *additively*, folding them into `composite_score` so the
+> autoresearch target rewards correctness (grounding/conformance) rather than
+> density alone. Implementation is deferred — this file is the roadmap.
