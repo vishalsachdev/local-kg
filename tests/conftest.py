@@ -34,11 +34,15 @@ def sample_entities():
 def sample_relationships():
     return [
         Relationship("BADM 557", "BADM 576", "prerequisite_of",
-                     "BI before ML II", confidence=0.9, source_file="syllabus.md"),
+                     "BI before ML II", confidence=0.9, source_file="syllabus.md",
+                     quote="BADM 557 is a prerequisite for BADM 576",
+                     grounded=True, conforms=True),
         Relationship("BADM 557", "Xing", "taught_by",
-                     "Taught by Xing", confidence=0.8, source_file="roster.md"),
+                     "Taught by Xing", confidence=0.8, source_file="roster.md",
+                     quote="BADM 557 is taught by Xing", grounded=True, conforms=True),
         Relationship("BADM 557", "Power BI", "uses",
-                     "Uses Power BI", confidence=0.85, source_file="syllabus.md"),
+                     "Uses Power BI", confidence=0.85, source_file="syllabus.md",
+                     quote="", grounded=False, conforms=True),  # ungrounded
     ]
 
 

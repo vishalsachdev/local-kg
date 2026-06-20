@@ -211,8 +211,8 @@ triples, a human accepts/rejects in a CSV; the accepted set is your reference
 
 | # | Change | Effort | Why it ranks here |
 |---|--------|--------|-------------------|
-| **P1** | **Grounding gate** — `quote` per triple + deterministic substring check; persist `{chunk_id, quote, grounded}` on edges | S–M | Cheapest, most robust defense; deterministic; matters most for small local models |
-| **P2** | **Schema conformance** — validate relation predicates + typed `(s_type,rel,o_type)` patterns; drop/flag violations | S | Big precision lever; small, self-contained |
+| **P1** ✅ | **Grounding gate** — `quote` per triple + deterministic substring check; persist `{chunk_id, quote, grounded}` on edges | S–M | Cheapest, most robust defense; deterministic; matters most for small local models |
+| **P2** ✅ | **Schema conformance** — validate relation predicates + typed `(s_type,rel,o_type)` patterns; drop/flag violations | S | Big precision lever; small, self-contained |
 | **P3** | **Content-level eval scorecard** — grounding_rate, conformance, relation-hallucination, duplication; structural → "shape" panel | M | Fixes the Goodhart-gameable score — **but changes the autoresearch "fixed harness" contract (decision needed)** |
 | **P4** | **Entity-resolution cascade** — embedding blocking → hybrid score → LLM adjudication → cluster; aliases + provenance | L | Largest quality gain on messy corpora; needs a local embedding model |
 | **P5** | **HITL review queue** — uncertainty + impact triage exported to CSV/md; `verified` flag persistence | M | Compounds P1–P4; turns the pipeline into a curation loop |

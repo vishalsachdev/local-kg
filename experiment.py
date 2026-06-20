@@ -46,7 +46,11 @@ EXTRACTION_RULES = """RULES:
 4. For decisions, extract WHO decided WHAT and connect them
 5. For email threads, extract the people involved and topics discussed
 6. If entity type is unclear, use "concept" with confidence 0.5
-7. If relationship is implied but not stated, use "related_to" with confidence 0.5"""
+7. If relationship is implied but not stated, use "related_to" with confidence 0.5
+8. Use ONLY the entity types and relationship types listed above — never invent new ones
+9. Every relationship MUST include a "quote": a short span copied VERBATIM from the
+   text below that supports it. Copy the exact words; do not paraphrase. If you
+   cannot find a supporting span in the text, do not emit the relationship."""
 
 # ── The Extraction Prompt ────────────────────────────────────────────
 # This is the main lever. Rewrite this to improve extraction quality.
@@ -66,7 +70,7 @@ Return ONLY valid JSON in this exact format:
     {{"name": "BADM 557", "type": "course", "description": "Business Intelligence with AI, 4 credits", "confidence": 0.95}}
   ],
   "relationships": [
-    {{"source": "FIN 550", "target": "BADM 576", "relation": "prerequisite_of", "description": "ML I before ML II", "confidence": 0.9}}
+    {{"source": "FIN 550", "target": "BADM 576", "relation": "prerequisite_of", "description": "ML I before ML II", "quote": "FIN 550 is a prerequisite for BADM 576", "confidence": 0.9}}
   ]
 }}
 
@@ -89,3 +93,39 @@ STOP_ENTITIES = {
     "the document", "the text", "the article",
     "n/a", "tbd", "none",
 }
+
+# ── Schema Conformance (P2) ──────────────────────────────────────────
+# Post-hoc validation allow-lists. The LLM is asked to use only these, but
+# small local models drift, so every extraction is validated against them.
+ALLOWED_ENTITY_TYPES = {"person", "course", "tool", "concept", "organization"}
+ALLOWED_RELATION_TYPES = {
+    "prerequisite_of", "taught_by", "uses", "part_of",
+    "covers", "decided_by", "depends_on", "related_to",
+}
+
+# Typed (source_type, relation, target_type) patterns. "*" matches any type.
+# An edge is pattern-conforming if its endpoint types match at least one pattern.
+# Endpoints whose type is unknown are not penalized on the pattern check.
+ALLOWED_RELATION_PATTERNS = {
+    ("course", "prerequisite_of", "course"),
+    ("course", "taught_by", "person"),
+    ("course", "uses", "tool"),
+    ("person", "uses", "tool"),
+    ("course", "covers", "concept"),
+    ("*", "part_of", "*"),
+    ("*", "decided_by", "person"),
+    ("*", "depends_on", "*"),
+    ("*", "related_to", "*"),
+}
+
+# If True, drop relations that violate the schema; if False, keep them but
+# mark conforms=False (flag, don't silently drop — safer for small models).
+STRICT_SCHEMA = False
+
+# ── Grounding (P1) ───────────────────────────────────────────────────
+# Each relationship must carry a verbatim "quote" that appears in the source
+# chunk. The check is deterministic (exact, then whitespace/case-normalized
+# substring). If REQUIRE_GROUNDING is True, ungrounded relations are dropped;
+# otherwise they are kept but marked grounded=False for review/eval.
+REQUIRE_GROUNDING = False
+MIN_QUOTE_LENGTH = 8

@@ -62,6 +62,23 @@ def test_round_trip_preserves_graph(sample_graph, tmp_path):
     assert reloaded.has_edge("BADM 557", "Power BI")
 
 
+def test_export_includes_provenance_quote(sample_graph, tmp_path):
+    out = tmp_path / "bundle"
+    export_okf(sample_graph, str(out))
+    text = (out / "entities" / "course" / "badm-557.md").read_text()
+    # The grounded taught_by edge's verbatim quote is rendered as a blockquote.
+    assert "BADM 557 is taught by Xing" in text
+    assert "> " in text  # blockquote marker
+
+
+def test_round_trip_survives_quote_lines(sample_graph, tmp_path):
+    """The blockquote evidence lines must not be parsed as extra edges."""
+    out = tmp_path / "bundle"
+    export_okf(sample_graph, str(out))
+    reloaded = load_okf_bundle(str(out))
+    assert reloaded.number_of_edges() == sample_graph.number_of_edges()
+
+
 def test_round_trip_does_not_duplicate_edges_from_backlinks(sample_graph, tmp_path):
     """The 'Referenced by' section must not be re-parsed into extra edges."""
     out = tmp_path / "bundle"
