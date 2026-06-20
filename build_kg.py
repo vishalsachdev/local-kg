@@ -51,6 +51,12 @@ def main():
         default="extraction_log.json",
         help="Extraction log file for episodic memory (default: extraction_log.json)",
     )
+    parser.add_argument(
+        "--okf",
+        metavar="DIR",
+        default=None,
+        help="Also export an Open Knowledge Format bundle to this directory",
+    )
     args = parser.parse_args()
 
     console.print(Panel.fit(
@@ -144,6 +150,15 @@ def main():
 
     # Save episodic memory (extraction log)
     Path(args.log).write_text(json.dumps(extraction_log, indent=2))
+
+    # Optional: export a portable, shareable Open Knowledge Format bundle
+    if args.okf:
+        from okf_export import export_okf
+        summary = export_okf(G, args.okf)
+        console.print(
+            f"  Exported OKF bundle to [cyan]{summary['out_dir']}/[/cyan] "
+            f"({summary['files_written']} markdown files)"
+        )
 
     total_time = ingest_time + extract_time
     console.print(Panel.fit(

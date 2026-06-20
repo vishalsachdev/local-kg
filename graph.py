@@ -100,14 +100,19 @@ def build_graph(
 
 def save_graph(G: nx.DiGraph, path: str):
     """Save the knowledge graph as JSON."""
-    data = nx.node_link_data(G)
+    # Pin the edges key explicitly: NetworkX changed the default from "links"
+    # to "edges" across 3.x, and leaving it implicit emits a FutureWarning.
+    data = nx.node_link_data(G, edges="edges")
     Path(path).write_text(json.dumps(data, indent=2, default=str))
 
 
 def load_graph(path: str) -> nx.DiGraph:
     """Load a knowledge graph from JSON."""
     data = json.loads(Path(path).read_text())
-    return nx.node_link_graph(data)
+    # Accept both the modern "edges" key and graphs written by older NetworkX
+    # (which used "links"), so previously saved graphs still load.
+    edges_key = "edges" if "edges" in data else "links"
+    return nx.node_link_graph(data, edges=edges_key)
 
 
 def graph_stats(G: nx.DiGraph) -> dict:

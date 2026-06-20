@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Generated knowledge-graph artifacts
+knowledge_graph.json
+kg_experiment.json
+extraction_log.json
+results.tsv
+okf_bundle/
+*.okf/

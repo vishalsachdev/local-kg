@@ -82,7 +82,11 @@ def extract_from_chunk(
         raise RuntimeError("ollama package not installed. Run: pip install ollama")
 
     model = model or exp.MODEL
-    prompt = exp.EXTRACTION_PROMPT.format(text=chunk.text)
+    # Use plain substitution rather than str.format(): the prompt necessarily
+    # contains literal JSON braces ({...}) as a worked example, which would make
+    # str.format() raise KeyError. The agent can edit the prompt freely without
+    # worrying about escaping braces.
+    prompt = exp.EXTRACTION_PROMPT.replace("{text}", chunk.text)
 
     try:
         response = ollama.chat(
