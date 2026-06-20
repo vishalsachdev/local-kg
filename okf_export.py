@@ -140,20 +140,24 @@ def _render_entity(G: nx.DiGraph, name: str, path_map: dict[str, str]) -> str:
         return f"[{target}]({rel})"
 
     # Outgoing relationships, grouped by relation type.
-    outgoing: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    outgoing: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
     for _, tgt, eattrs in G.out_edges(name, data=True):
         if tgt in path_map:
             outgoing[eattrs.get("relation", "related_to")].append(
-                (tgt, eattrs.get("description", ""))
+                (tgt, eattrs.get("description", ""), eattrs.get("quote", ""))
             )
 
     if outgoing:
         lines.append("## Relationships\n")
         for relation in sorted(outgoing):
             lines.append(f"### {relation}\n")
-            for tgt, edesc in sorted(outgoing[relation]):
+            for tgt, edesc, quote in sorted(outgoing[relation]):
                 suffix = f" — {edesc}" if edesc else ""
                 lines.append(f"- → {link(tgt)}{suffix}")
+                # Verbatim supporting evidence (provenance). The leading ">"
+                # means the round-trip reader ignores this line as a non-edge.
+                if quote:
+                    lines.append(f"  > “{quote}”")
             lines.append("")
 
     # Incoming relationships (navigational; not re-parsed on import).

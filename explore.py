@@ -51,7 +51,10 @@ def show_entity(G, name):
     if node["outgoing"]:
         tree = Tree(f"[bold]{node['entity']}[/bold] →")
         for rel in node["outgoing"]:
-            tree.add(f"[cyan]{rel['relation']}[/cyan] → {rel['entity']}")
+            mark = "[green]✓[/green]" if rel.get("grounded") else "[yellow]?[/yellow]"
+            branch = tree.add(f"{mark} [cyan]{rel['relation']}[/cyan] → {rel['entity']}")
+            if rel.get("quote"):
+                branch.add(f"[dim]“{rel['quote']}”[/dim]")
         console.print(tree)
 
     if node["incoming"]:

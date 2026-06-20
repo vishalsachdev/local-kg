@@ -36,6 +36,8 @@ def get_neighbors(G: nx.DiGraph, entity: str) -> dict:
             "entity": target,
             "relation": attrs.get("relation", "related_to"),
             "description": attrs.get("description", ""),
+            "grounded": attrs.get("grounded", False),
+            "quote": attrs.get("quote", ""),
         })
 
     incoming = []
@@ -44,6 +46,8 @@ def get_neighbors(G: nx.DiGraph, entity: str) -> dict:
             "entity": source,
             "relation": attrs.get("relation", "related_to"),
             "description": attrs.get("description", ""),
+            "grounded": attrs.get("grounded", False),
+            "quote": attrs.get("quote", ""),
         })
 
     node_data = G.nodes[entity]

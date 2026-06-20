@@ -125,6 +125,16 @@ def main():
     table.add_row("Unique Entities", str(stats["total_entities"]))
     table.add_row("Relationships", str(stats["total_relationships"]))
     table.add_row("Connected Components", str(stats["connected_components"]))
+    table.add_row(
+        "Grounded (quote-verified)",
+        f"{stats['grounded_relationships']}/{stats['total_relationships']} "
+        f"({stats['grounding_rate']:.0%})",
+    )
+    table.add_row(
+        "Schema-conforming",
+        f"{stats['conforming_relationships']}/{stats['total_relationships']} "
+        f"({stats['conformance_rate']:.0%})",
+    )
     console.print(table)
 
     # Entity types

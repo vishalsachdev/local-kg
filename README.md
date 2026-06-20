@@ -63,6 +63,29 @@ python build_kg.py ./my-content
 python build_kg.py ./my-content -m mistral -o my_graph.json
 ```
 
+### Grounding & schema conformance (provenance)
+
+Every extracted relationship is checked for two things, with the results stored
+on the edge (and shown in the build summary, the explorer, and the OKF export):
+
+- **Grounding** — the LLM must return a verbatim `quote` supporting each triple,
+  which is then deterministically verified to appear in the source chunk. Edges
+  carry `grounded` + the supporting `quote`. The explorer marks grounded edges
+  with `✓`; OKF renders the quote as a blockquote.
+- **Schema conformance** — the relation predicate must be in the allow-list, and
+  the `(source_type, relation, target_type)` triple must match an allowed
+  pattern. Non-conforming edges are flagged (`conforms`).
+
+By default these **flag** rather than drop (safer for small local models). To
+turn them into hard gates, flip the switches in `experiment.py`:
+
+```python
+REQUIRE_GROUNDING = True   # drop relationships whose quote isn't in the source
+STRICT_SCHEMA     = True   # drop relationships that violate the schema
+```
+
+The rationale and citations are in [`RESEARCH.md`](RESEARCH.md) (P1, P2).
+
 ### Explore
 ```bash
 # Interactive mode

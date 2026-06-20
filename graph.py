@@ -86,6 +86,14 @@ def build_graph(
             existing = G.edges[src_name, tgt_name]
             existing["confidence"] = max(existing["confidence"], rel.confidence)
             existing["mention_count"] = existing.get("mention_count", 1) + 1
+            # An edge is grounded if ANY mention was grounded; prefer to keep a
+            # quote from a grounded mention as the supporting evidence.
+            if rel.grounded and not existing.get("grounded"):
+                existing["grounded"] = True
+                existing["quote"] = rel.quote
+                existing["chunk_id"] = rel.chunk_id
+            elif not existing.get("quote") and rel.quote:
+                existing["quote"] = rel.quote
         else:
             G.add_edge(src_name, tgt_name, **{
                 "relation": rel.relation,
@@ -93,6 +101,10 @@ def build_graph(
                 "confidence": rel.confidence,
                 "mention_count": 1,
                 "source_file": rel.source_file,
+                "quote": rel.quote,
+                "chunk_id": rel.chunk_id,
+                "grounded": rel.grounded,
+                "conforms": rel.conforms,
             })
 
     return G
@@ -129,11 +141,20 @@ def graph_stats(G: nx.DiGraph) -> dict:
     degree_sorted = sorted(G.degree(), key=lambda x: x[1], reverse=True)
     top_entities = degree_sorted[:10]
 
+    # Grounding (P1) and schema conformance (P2) rates over relationships.
+    n_edges = G.number_of_edges()
+    grounded = sum(1 for _, _, a in G.edges(data=True) if a.get("grounded"))
+    conforming = sum(1 for _, _, a in G.edges(data=True) if a.get("conforms", True))
+
     return {
         "total_entities": G.number_of_nodes(),
-        "total_relationships": G.number_of_edges(),
+        "total_relationships": n_edges,
         "entity_types": dict(type_counts),
         "relationship_types": dict(relation_counts),
         "top_connected": [(name, deg) for name, deg in top_entities],
         "connected_components": nx.number_weakly_connected_components(G),
+        "grounded_relationships": grounded,
+        "grounding_rate": round(grounded / n_edges, 4) if n_edges else 0.0,
+        "conforming_relationships": conforming,
+        "conformance_rate": round(conforming / n_edges, 4) if n_edges else 0.0,
     }

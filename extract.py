@@ -41,6 +41,11 @@ class Relationship:
     description: str = ""
     confidence: float = 0.8
     source_file: str = ""
+    # Provenance + quality flags (P1 grounding, P2 schema conformance)
+    quote: str = ""          # verbatim supporting span copied from the source
+    chunk_id: str = ""       # which chunk this triple came from
+    grounded: bool = False   # quote verified to appear in the source chunk
+    conforms: bool = True    # predicate + endpoint types obey the schema
 
 
 def _parse_llm_json(raw: str) -> dict:
@@ -71,6 +76,45 @@ def _filter_entity(name: str, confidence: float) -> bool:
     if name.lower() in exp.STOP_ENTITIES:
         return False
     return True
+
+
+def _normalize_for_grounding(s: str) -> str:
+    """Collapse whitespace and lowercase, for tolerant substring matching."""
+    return re.sub(r"\s+", " ", s).strip().lower()
+
+
+def is_grounded(quote: str, source_text: str) -> bool:
+    """
+    Deterministic grounding check (P1): is ``quote`` a verbatim span of
+    ``source_text``? Tiered: exact substring, then whitespace/case-normalized
+    substring. No LLM call — cheap and robust, which matters most for the small
+    local models that hallucinate the most.
+    """
+    quote = (quote or "").strip()
+    if len(quote) < exp.MIN_QUOTE_LENGTH:
+        return False
+    if quote in source_text:
+        return True
+    return _normalize_for_grounding(quote) in _normalize_for_grounding(source_text)
+
+
+def conforms_to_schema(relation: str, source_type: str, target_type: str) -> bool:
+    """
+    Schema conformance check (P2): the predicate must be in the allow-list, and
+    if both endpoint types are known, the (source_type, relation, target_type)
+    triple must match an allowed pattern ("*" is a wildcard). Endpoints with an
+    unknown type are not penalized on the pattern check.
+    """
+    if relation not in exp.ALLOWED_RELATION_TYPES:
+        return False
+    if not source_type or not target_type:
+        return True  # can't pattern-check without both endpoint types
+    for s_pat, r_pat, t_pat in exp.ALLOWED_RELATION_PATTERNS:
+        if r_pat != relation:
+            continue
+        if s_pat in ("*", source_type) and t_pat in ("*", target_type):
+            return True
+    return False
 
 
 def extract_from_chunk(
@@ -117,18 +161,47 @@ def extract_from_chunk(
             source_section=chunk.section,
         ))
 
+    # Map normalized entity name → type (for the schema pattern check below).
+    def _norm(name: str) -> str:
+        return name.lower().strip().replace("-", " ").replace("_", " ")
+
+    type_by_name = {_norm(e.name): e.entity_type for e in entities}
+
     relationships = []
     for r in data.get("relationships", []):
         confidence = float(r.get("confidence", 0.8))
         if confidence < exp.MIN_RELATIONSHIP_CONFIDENCE:
             continue
+
+        source = r.get("source", "").strip()
+        target = r.get("target", "").strip()
+        relation = r.get("relation", "related_to")
+        quote = (r.get("quote", "") or "").strip()
+
+        grounded = is_grounded(quote, chunk.text)
+        conforms = conforms_to_schema(
+            relation,
+            type_by_name.get(_norm(source), ""),
+            type_by_name.get(_norm(target), ""),
+        )
+
+        # Optional hard gates (default off — flag rather than silently drop).
+        if exp.REQUIRE_GROUNDING and not grounded:
+            continue
+        if exp.STRICT_SCHEMA and not conforms:
+            continue
+
         relationships.append(Relationship(
-            source=r.get("source", "").strip(),
-            target=r.get("target", "").strip(),
-            relation=r.get("relation", "related_to"),
+            source=source,
+            target=target,
+            relation=relation,
             description=r.get("description", ""),
             confidence=confidence,
             source_file=chunk.source_file,
+            quote=quote,
+            chunk_id=chunk.id,
+            grounded=grounded,
+            conforms=conforms,
         ))
 
     return entities, relationships
